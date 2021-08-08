@@ -54,36 +54,33 @@ exports.getAllSauce = (req, res, next) => {
 };
 
 exports.likeSauces = (req, res, next) => {
-    var user_id = req.body.userId;
-    var like = req.body.likes;
-
-    if (like == 1) {
-        thing.likes++;
-        thing.userLiked.push(user_id);
-        Thing.updateOne({ _id: req.params.id }, {...thing, _id: req.params.id })
-            .then(() => res.status(200).json({ message: 'Vous avez like !' }))
-            .catch(error => res.status(400).json({ error }));
+    //Si l'utilisateur like une sauce
+    if (req.body.like === 1) {
+        Thing.updateOne({ _id: req.params.id }, { $push: { usersLiked: req.body.userId }, $inc: { likes: +1 } })
+            .then(() => res.status(200).json({ message: 'Like ajouté' }))
+            .catch((error) => res.status(400).json({ error }))
     }
-
-    if (like == -1) {
-        thing.dislikes++;
-        thing.userDisliked.push(user_id);
-        Thing.updateOne({ _id: req.params.id }, {...thing, _id: req.params.id })
-            .then(() => res.status(200).json({ message: 'Vous avez dislike !' }))
-            .catch(error => res.status(400).json({ error }));
+    //Si l'utilisateur dislike une sauce
+    if (req.body.like === -1) {
+        Thing.updateOne({ _id: req.params.id }, { $push: { usersDisliked: req.body.userId }, $inc: { dislikes: +1 } })
+            .then(() => { res.status(200).json({ message: 'Dislike ajouté !' }) })
+            .catch((error) => res.status(400).json({ error }))
     }
-
-    if (like == 0 && thing.userLiked.indexOf(user_id) < -1) {
-        thing.likes--;
-        thing.userLiked.splice(user_id, 1);
-        Thing.updateOne({ _id: req.params.id }, {...thing, _id: req.params.id })
-            .then(() => res.status(200).json({ message: 'Vous avez annulé votre like !' }))
-            .catch(error => res.status(400).json({ error }));
-    } else if (like == 0 && thing.userDisliked.indexOf(user_id) < -1) {
-        thing.dislikes--;
-        thing.userDisliked.splice(user_id, 1);
-        Thing.updateOne({ _id: req.params.id }, {...thing, _id: req.params.id })
-            .then(() => res.status(200).json({ message: 'Vous avez annulé votre dislike !' }))
-            .catch(error => res.status(400).json({ error }));
+    //Si l'utilisateur annule son like ou son dislike
+    if (req.body.like === 0) {
+        Thing.findOne({ _id: req.params.id })
+            .then((sauce) => {
+                if (sauce.usersLiked.includes(req.body.userId)) {
+                    Thing.updateOne({ _id: req.params.id }, { $pull: { usersLiked: req.body.userId }, $inc: { likes: -1 }, })
+                        .then(() => res.status(200).json({ message: 'Like retiré !' }))
+                        .catch((error) => res.status(400).json({ error }))
+                }
+                if (sauce.usersDisliked.includes(req.body.userId)) {
+                    Thing.updateOne({ _id: req.params.id }, { $pull: { usersDisliked: req.body.userId }, $inc: { dislikes: -1 }, })
+                        .then(() => res.status(200).json({ message: 'Dislike retiré !' }))
+                        .catch((error) => res.status(400).json({ error }))
+                }
+            })
+            .catch((error) => res.status(404).json({ error }))
     }
 };
